@@ -1,0 +1,50 @@
+import tensorflow as tf
+import tensorflow_datasets as tfds
+import matplotlib.pyplot as plt
+import numpy as np
+
+# a. Load the dataset
+(ds_train, ds_test), ds_info = tfds.load(
+    'horses_or_humans',
+    split=['train', 'test'],
+    as_supervised=True,
+    with_info=True
+)
+
+# b. View the number of training and testing images
+print("Training images:", ds_info.splits['train'].num_examples)
+print("Testing images:", ds_info.splits['test'].num_examples)
+
+# c. Plot some images
+plt.figure(figsize=(10,5))
+for i, (img, label) in enumerate(ds_train.take(6)):
+    plt.subplot(2,3,i+1)
+    plt.imshow(img)
+    plt.title("Horse" if label==0 else "Human")
+    plt.axis('off')
+plt.show()
+
+# d. Normalizing the training data
+def normalize_img(image, label):
+    image = tf.cast(image, tf.float32) / 255.0
+    return image, label
+
+ds_train = ds_train.map(normalize_img).batch(32).prefetch(1)
+ds_test = ds_test.map(normalize_img).batch(32).prefetch(1)
+
+# e. Build a simple ResNet-based CNN
+base_model = tf.keras.applications.ResNet50(
+    weights=None, include_top=False, input_shape=(300,300,3), pooling='avg'
+)
+model = tf.keras.Sequential([
+    base_model,
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
+
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# f. Train and show accuracy
+history = model.fit(ds_train, epochs=5, validation_data=ds_test)
+
+print("Training accuracy:", history.history['accuracy'][-1])
+print("Testing accuracy:", history.history['val_accuracy'][-1])
