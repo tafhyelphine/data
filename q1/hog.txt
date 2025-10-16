@@ -1,0 +1,75 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Step 1: Preprocess the Data (resize to 64x128)
+img = cv2.imread('image2.png', cv2.IMREAD_GRAYSCALE)
+img = cv2.resize(img, (64, 128))
+
+plt.figure()
+plt.title("Step 1: Preprocessed Image (64x128)")
+plt.imshow(img, cmap='gray')
+plt.axis('off')
+
+# Step 2: Calculate Gradients (x and y direction)
+gx = cv2.Sobel(img, cv2.CV_32F, 1, 0, ksize=1)
+gy = cv2.Sobel(img, cv2.CV_32F, 0, 1, ksize=1)
+
+plt.figure()
+plt.subplot(1,2,1)
+plt.title("Gradient X")
+plt.imshow(gx, cmap='gray')
+plt.axis('off')
+plt.subplot(1,2,2)
+plt.title("Gradient Y")
+plt.imshow(gy, cmap='gray')
+plt.axis('off')
+
+# Step 3: Calculate Magnitude and Orientation
+magnitude, angle = cv2.cartToPolar(gx, gy, angleInDegrees=True)
+
+plt.figure()
+plt.subplot(1,2,1)
+plt.title("Gradient Magnitude")
+plt.imshow(magnitude, cmap='gray')
+plt.axis('off')
+plt.subplot(1,2,2)
+plt.title("Gradient Orientation")
+plt.imshow(angle, cmap='gray')
+plt.axis('off')
+
+# Step 4: Calculate Histogram of Gradients in 8x8 cells
+cell_size = (8, 8)
+num_bins = 9
+h, w = img.shape
+cells_x = w // cell_size[0]
+cells_y = h // cell_size[1]
+hist = np.zeros((cells_y, cells_x, num_bins), dtype=np.float32)
+
+for i in range(cells_y):
+    for j in range(cells_x):
+        cell_mag = magnitude[i*8:(i+1)*8, j*8:(j+1)*8]
+        cell_ang = angle[i*8:(i+1)*8, j*8:(j+1)*8]
+        hist_cell, _ = np.histogram(cell_ang, bins=num_bins, range=(0, 180), weights=cell_mag)
+        hist[i, j, :] = hist_cell
+
+plt.figure()
+plt.title("Step 4: HOG Cell Histogram (Shape)")
+plt.imshow(hist.sum(axis=2), cmap='gray')
+plt.axis('off')
+
+# Step 5: Normalize gradients in 16x16 blocks
+features = []
+for i in range(cells_y - 1):
+    for j in range(cells_x - 1):
+        block = hist[i:i+2, j:j+2, :].ravel()
+        norm = np.linalg.norm(block) + 1e-5
+        block = block / norm
+        features.extend(block)
+
+# Step 6: Final HOG feature vector for complete image
+hog_features = np.array(features)
+
+print("HOG feature vector length:", len(hog_features))
+
+plt.show()

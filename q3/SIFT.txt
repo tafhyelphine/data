@@ -1,0 +1,31 @@
+import cv2
+import matplotlib.pyplot as plt
+
+# Load the image in grayscale
+img = cv2.imread('image2.png', cv2.IMREAD_GRAYSCALE)
+
+# ------------------------------
+# 1. Construct Scale Space & 2. Keypoint Localisation
+# ------------------------------
+sift = cv2.SIFT_create()
+keypoints = sift.detect(img, None)
+
+# Draw keypoints
+img_keypoints = cv2.drawKeypoints(img, keypoints, None)
+
+plt.figure(figsize=(6,6))
+plt.title("Keypoints detected")
+plt.imshow(img_keypoints, cmap='gray')
+plt.axis('off')
+plt.show()
+
+# ------------------------------
+# 3. Orientation Assignment & 4. Keypoint Descriptor
+# ------------------------------
+keypoints, descriptors = sift.compute(img, keypoints)
+
+print("Number of keypoints detected:", len(keypoints))
+print("Descriptor shape:", descriptors.shape)
+
+# Optional: show one descriptor vector
+print("First descriptor vector (128 elements):\n", descriptors[0])

@@ -1,0 +1,54 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load the image
+img = cv2.imread('image2.png')
+rows, cols = img.shape[:2]
+
+# ------------------------------
+# 1. Scaling
+# ------------------------------
+scaled_up = cv2.resize(img, None, fx=1.5, fy=1.5)   # scale up by 1.5
+scaled_down = cv2.resize(img, None, fx=0.5, fy=0.5) # scale down by 0.5
+
+# ------------------------------
+# 2. Rotation
+# ------------------------------
+M_rotate = cv2.getRotationMatrix2D((cols/2, rows/2), 45, 1)  # rotate 45 degrees
+rotated = cv2.warpAffine(img, M_rotate, (cols, rows))
+
+# ------------------------------
+# 3. Shearing
+# ------------------------------
+M_shear = np.array([[1, 0.5, 0],   # shear along x
+                    [0.5, 1, 0]], dtype=np.float32)
+sheared = cv2.warpAffine(img, M_shear, (cols, rows))
+
+# ------------------------------
+# Display results
+# ------------------------------
+plt.figure(figsize=(10,8))
+
+plt.subplot(2,2,1)
+plt.title("Original Image")
+plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+plt.axis('off')
+
+plt.subplot(2,2,2)
+plt.title("Scaled Up")
+plt.imshow(cv2.cvtColor(scaled_up, cv2.COLOR_BGR2RGB))
+plt.axis('off')
+
+plt.subplot(2,2,3)
+plt.title("Rotated 45°")
+plt.imshow(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
+plt.axis('off')
+
+plt.subplot(2,2,4)
+plt.title("Sheared")
+plt.imshow(cv2.cvtColor(sheared, cv2.COLOR_BGR2RGB))
+plt.axis('off')
+
+plt.tight_layout()
+plt.show()

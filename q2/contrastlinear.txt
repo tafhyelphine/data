@@ -1,0 +1,55 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load the image in grayscale
+img = cv2.imread('image2.png', cv2.IMREAD_GRAYSCALE)
+
+# -------------------------------
+# 1. Contrast Stretching
+# -------------------------------
+min_val = np.min(img)
+max_val = np.max(img)
+stretched = ((img - min_val) / (max_val - min_val)) * 255
+stretched = stretched.astype(np.uint8)
+
+# -------------------------------
+# 2. Linear Filtering (Smoothing)
+# -------------------------------
+kernel = np.ones((3,3), np.float32) / 9
+filtered = cv2.filter2D(stretched, -1, kernel)
+
+# -------------------------------
+# 3. Plot images and histograms
+# -------------------------------
+plt.figure(figsize=(10,6))
+
+plt.subplot(2,3,1)
+plt.title("Original Image")
+plt.imshow(img, cmap='gray')
+plt.axis('off')
+
+plt.subplot(2,3,2)
+plt.title("Contrast Stretched")
+plt.imshow(stretched, cmap='gray')
+plt.axis('off')
+
+plt.subplot(2,3,3)
+plt.title("Linear Filtered")
+plt.imshow(filtered, cmap='gray')
+plt.axis('off')
+
+plt.subplot(2,3,4)
+plt.title("Original Histogram")
+plt.hist(img.ravel(), 256, [0,256])
+
+plt.subplot(2,3,5)
+plt.title("Stretched Histogram")
+plt.hist(stretched.ravel(), 256, [0,256])
+
+plt.subplot(2,3,6)
+plt.title("Filtered Histogram")
+plt.hist(filtered.ravel(), 256, [0,256])
+
+plt.tight_layout()
+plt.show()
