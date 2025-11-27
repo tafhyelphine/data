@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load the image
-img = cv2.imread('image2.png')
+img = cv2.imread('/content/Image1.png')
 rows, cols = img.shape[:2]
 
 # ------------------------------
@@ -28,6 +28,8 @@ sheared = cv2.warpAffine(img, M_shear, (cols, rows))
 # ------------------------------
 # Display results
 # ------------------------------
+
+# 👉 Show Original + Transforms (same as before)
 plt.figure(figsize=(10,8))
 
 plt.subplot(2,2,1)
@@ -36,7 +38,7 @@ plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 plt.axis('off')
 
 plt.subplot(2,2,2)
-plt.title("Scaled Up")
+plt.title("Scaled Up (preview ↓ actual big image shown separately)")
 plt.imshow(cv2.cvtColor(scaled_up, cv2.COLOR_BGR2RGB))
 plt.axis('off')
 
@@ -51,4 +53,11 @@ plt.imshow(cv2.cvtColor(sheared, cv2.COLOR_BGR2RGB))
 plt.axis('off')
 
 plt.tight_layout()
+plt.show()
+
+# ⭐ SEPARATE BIG WINDOW FOR SCALED-UP IMAGE
+plt.figure(figsize=(12,12))   # much larger window
+plt.title("Actual Scaled-Up Image (1.5x)")
+plt.imshow(cv2.cvtColor(scaled_up, cv2.COLOR_BGR2RGB))
+plt.axis('off')
 plt.show()
