@@ -44,7 +44,8 @@ model = tf.keras.Sequential([
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
 # f. Train and show accuracy
-history = model.fit(ds_train, epochs=5, validation_data=ds_test)
+history = model.fit(ds_train, epochs=3, validation_data=ds_test)
 
 print("Training accuracy:", history.history['accuracy'][-1])
 print("Testing accuracy:", history.history['val_accuracy'][-1])
+
