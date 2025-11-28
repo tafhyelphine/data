@@ -1,0 +1,135 @@
+# ============================================
+# Optimized MS-COCO Classification & Detection
+# ============================================
+
+import tensorflow as tf
+import tensorflow_datasets as tfds
+import matplotlib.pyplot as plt
+from tensorflow.keras import layers, models
+import tensorflow_hub as hub
+
+# --------------------------------------------
+# 1) Enable GPU check
+# --------------------------------------------
+print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+
+# --------------------------------------------
+# 2) Load COCO dataset (small subset for demo)
+# --------------------------------------------
+(ds_train, ds_val), ds_info = tfds.load(
+    'coco/2017',
+    split=['train[:1%]', 'validation[:0.5%]'],  # small subset for fast demo
+    with_info=True
+)
+
+print("Training samples:", ds_info.splits['train'].num_examples)
+print("Validation samples:", ds_info.splits['validation'].num_examples)
+
+# --------------------------------------------
+# 3) Extract first object label
+# --------------------------------------------
+def extract_label(example):
+    labels = example['objects']['label']
+    label = tf.cond(
+        tf.size(labels) > 0,
+        lambda: labels[0],
+        lambda: tf.constant(0, dtype=tf.int64)
+    )
+    return example['image'], label
+
+ds_train = ds_train.map(extract_label, num_parallel_calls=tf.data.AUTOTUNE)
+ds_val = ds_val.map(extract_label, num_parallel_calls=tf.data.AUTOTUNE)
+
+# --------------------------------------------
+# 4) Data augmentation
+# --------------------------------------------
+data_augmentation = tf.keras.Sequential([
+    layers.RandomFlip("horizontal_and_vertical"),
+    layers.RandomRotation(0.1),
+    layers.RandomContrast(0.2)
+])
+
+def augment(image, label):
+    image = tf.cast(image, tf.float32)/255.0
+    image = data_augmentation(image)
+    return image, label
+
+aug_ds_train = ds_train.map(augment, num_parallel_calls=tf.data.AUTOTUNE)
+
+# --------------------------------------------
+# 5) Normalize & prepare batches
+# --------------------------------------------
+def normalize(image, label):
+    image = tf.cast(image, tf.float32)/255.0
+    return image, label
+
+ds_train_norm = ds_train.map(normalize, num_parallel_calls=tf.data.AUTOTUNE)\
+                      .shuffle(500).batch(32).prefetch(tf.data.AUTOTUNE)
+
+aug_ds_train_norm = aug_ds_train.shuffle(500).batch(32).prefetch(tf.data.AUTOTUNE)
+ds_val_norm = ds_val.map(normalize, num_parallel_calls=tf.data.AUTOTUNE)\
+                    .batch(32).prefetch(tf.data.AUTOTUNE)
+
+# --------------------------------------------
+# 6) Build CNN model
+# --------------------------------------------
+def build_cnn():
+    model = models.Sequential([
+        layers.InputLayer(input_shape=(None,None,3)),
+        layers.Resizing(128,128),
+        layers.Conv2D(32,3,activation='relu'),
+        layers.MaxPooling2D(),
+        layers.Conv2D(64,3,activation='relu'),
+        layers.MaxPooling2D(),
+        layers.Flatten(),
+        layers.Dense(128,activation='relu'),
+        layers.Dense(80,activation='softmax')  # 80 COCO classes
+    ])
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+# --------------------------------------------
+# 7) Train CNN before augmentation
+# --------------------------------------------
+cnn_model = build_cnn()
+history = cnn_model.fit(ds_train_norm, validation_data=ds_val_norm, epochs=5, steps_per_epoch=50)
+
+# Plot accuracy
+plt.plot(history.history['accuracy'], label='Train')
+plt.plot(history.history['val_accuracy'], label='Validation')
+plt.title("CNN Accuracy Before Augmentation")
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.legend()
+plt.show()
+
+# --------------------------------------------
+# 8) Train CNN after augmentation
+# --------------------------------------------
+cnn_aug_model = build_cnn()
+history_aug = cnn_aug_model.fit(aug_ds_train_norm, validation_data=ds_val_norm, epochs=5, steps_per_epoch=50)
+
+# Plot accuracy
+plt.plot(history_aug.history['accuracy'], label='Train')
+plt.plot(history_aug.history['val_accuracy'], label='Validation')
+plt.title("CNN Accuracy After Augmentation")
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.legend()
+plt.show()
+
+# --------------------------------------------
+# 9) Compare accuracies
+# --------------------------------------------
+print("CNN train/val before augmentation:", round(history.history['accuracy'][-1],3), "/", round(history.history['val_accuracy'][-1],3))
+print("CNN train/val after augmentation:", round(history_aug.history['accuracy'][-1],3), "/", round(history_aug.history['val_accuracy'][-1],3))
+
+# --------------------------------------------
+# 10) Faster R-CNN pre-trained demo (1 image)
+# --------------------------------------------
+detector = hub.load("https://tfhub.dev/tensorflow/faster_rcnn/openimages_v4/inception_resnet_v2/1")
+
+for img, _ in ds_val.take(1):
+    img_tensor = tf.expand_dims(tf.image.convert_image_dtype(img, tf.float32), axis=0)
+    result = detector(img_tensor)
+    print("Detected classes (top 5):", result['detection_class_entities'][:5])
